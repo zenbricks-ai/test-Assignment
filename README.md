@@ -27,31 +27,29 @@ so no terminal or Python is needed:
 There is no login: it's an internal tool. Keep it on the internal network (or behind your
 VPN / SSO proxy), because anyone who can reach it can start runs and change settings.
 
-## Running locally
+## Running it
 
-You need Python 3.12+, [uv](https://docs.astral.sh/uv/), Redis on `REDIS_URL`, and an API
-key for at least one LLM provider. Run each process in its own terminal:
+You only need [Docker](https://docs.docker.com/get-docker/) with Compose. Copy `.env.example`
+to `.env` and set at least one LLM key (`OPENROUTER_API_KEY`, `OPENAI_API_KEY`,
+`GEMINI_API_KEY` or `ANTHROPIC_API_KEY`). Then:
 
 ```bash
-cp .env.example .env    # set any of the four LLM keys
-uv sync
-uv run python -m uvicorn pulse.api:app --reload --port 8081
-uv run python -m celery -A pulse.tasks worker -Q celery,collect,llm,deliver --pool solo --loglevel INFO
-uv run python -m celery -A pulse.tasks beat --loglevel INFO
+docker compose up --build
 ```
 
-`--pool solo` is for Windows; drop it on Linux and macOS. The app is at
-http://localhost:8081, Swagger UI at http://localhost:8081/docs. Results land in `./data/`.
+That starts Redis, the API and app, a worker and the daily scheduler. Open
+**http://localhost:8081**; Swagger UI is at http://localhost:8081/docs.
 
-## Production (Docker Compose)
+Other commands you may need:
 
 ```bash
-cp .env.example .env
-docker compose up -d --build                # redis, api, worker, beat (+ shared data volume)
+docker compose up -d --build                # same, in the background
+docker compose logs -f worker               # follow a run's progress
 docker compose --profile ops up -d flower   # optional queue dashboard on http://localhost:5555
+docker compose cp api:/app/data/. ./data    # copy runs and digests out to ./data
+docker compose down                         # stop (data is kept in the pulse-data volume)
+docker compose down -v                      # stop and delete all data
 ```
-
-Then open http://localhost:8081. The same actions are available over HTTP (below).
 
 ## Storage
 
@@ -143,11 +141,13 @@ To use a cheaper model for one task, add `routes`. Tasks without a route use `ch
 
 ### Switching at runtime (no restart)
 
-```bash
-curl localhost:8081/llm                       # chain, source, has_key per entry
-curl -X PUT -H "Content-Type: application/json" localhost:8081/llm \
-  -d '{"chain":[{"provider":"anthropic","model":"claude-opus-5-5"},{"provider":"gemini","model":"gemini-3.8-flash"}]}'
-curl -X DELETE localhost:8081/llm             # back to config/llm.json
+Open http://localhost:8081/docs, use **PUT /llm** with a body like the one below, and
+**DELETE /llm** to go back to `config/llm.json`. **GET /llm** shows the current chain and
+which providers have a key.
+
+```json
+{"chain": [{"provider": "anthropic", "model": "claude-opus-5-5"},
+           {"provider": "gemini", "model": "gemini-3.8-flash"}]}
 ```
 
 `PUT /llm` validates the chain and saves it to `data/llm.json`. That override wins over
@@ -252,24 +252,19 @@ Add an entry to `config/sources.json` with `type: "rss"` (any RSS or Atom URL) o
 ## Scaling
 
 The API and workers are stateless apart from `DATA_DIR`. Scale them up as replicas on one
-host that share the `pulse-data` volume. Workers listen on four queues
-(`celery`, `collect`, `llm`, `deliver`), and each queue can get its own pool:
+host that share the `pulse-data` volume:
 
 ```bash
-celery -A pulse.tasks worker -Q llm --concurrency 8
-celery -A pulse.tasks worker -Q collect,deliver,celery --concurrency 16
+docker compose up -d --scale worker=4
 ```
+
+Workers listen on four queues (`celery`, `collect`, `llm`, `deliver`). To give LLM calls
+their own pool, add a second worker service in `docker-compose.yml` with `-Q llm`.
 
 Known limits:
 - **JSON store:** works on one host, or across hosts with a shared filesystem. Lookups scan whole directories, which is fine for a few thousand items, the size the 30-day retention keeps it at. Switch `store.py` to Postgres when workers need to span hosts without a shared disk, or the data grows past roughly 100k records. Only `store.py` and its callers in `pipeline.py` would change.
 - **Beat:** must run as exactly one process. Use `celery-redbeat` for a highly available scheduler.
 - **LLM rate limit:** `LLM_RATE_LIMIT` applies to each worker, not across all of them. Add a shared Redis token bucket when you run many LLM workers.
-
-## Development
-
-```bash
-uv run ruff check . && uv run ruff format --check . && uv run mypy pulse
-```
 
 ## Layout
 
