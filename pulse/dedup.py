@@ -27,8 +27,7 @@ def normalize_title(title: str) -> str:
 
 
 def find_similar(title: str, recent: dict[int, str]) -> int | None:
-    """Return id of a recent item whose normalized title is near-identical, else None.
-    """
+    """Return id of a recent item whose normalized title is near-identical, else None."""
     norm = normalize_title(title)
     for item_id, other in recent.items():
         if SequenceMatcher(None, norm, other).ratio() >= TITLE_SIMILARITY:

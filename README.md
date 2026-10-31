@@ -16,7 +16,7 @@ runtime. Storage is plain JSON files on disk, so there is no database to set up.
 
 ## Using it
 
-Open **http://localhost:8081** with Docker Compose, or **http://localhost:8000** with a local uvicorn. Everything is a button,
+Open **http://localhost:8081**. Everything is a button,
 so no terminal or Python is needed:
 
 | Section | Buttons |
@@ -35,13 +35,13 @@ key for at least one LLM provider. Run each process in its own terminal:
 ```bash
 cp .env.example .env    # set any of the four LLM keys
 uv sync
-uv run python -m uvicorn pulse.api:app --reload --port 8000
+uv run python -m uvicorn pulse.api:app --reload --port 8081
 uv run python -m celery -A pulse.tasks worker -Q celery,collect,llm,deliver --pool solo --loglevel INFO
 uv run python -m celery -A pulse.tasks beat --loglevel INFO
 ```
 
 `--pool solo` is for Windows; drop it on Linux and macOS. The app is at
-http://localhost:8000, Swagger UI at http://localhost:8000/docs. Results land in `./data/`.
+http://localhost:8081, Swagger UI at http://localhost:8081/docs. Results land in `./data/`.
 
 ## Production (Docker Compose)
 
@@ -144,10 +144,10 @@ To use a cheaper model for one task, add `routes`. Tasks without a route use `ch
 ### Switching at runtime (no restart)
 
 ```bash
-curl localhost:8000/llm                       # chain, source, has_key per entry
-curl -X PUT -H "Content-Type: application/json" localhost:8000/llm \
+curl localhost:8081/llm                       # chain, source, has_key per entry
+curl -X PUT -H "Content-Type: application/json" localhost:8081/llm \
   -d '{"chain":[{"provider":"anthropic","model":"claude-opus-5-5"},{"provider":"gemini","model":"gemini-3.8-flash"}]}'
-curl -X DELETE localhost:8000/llm             # back to config/llm.json
+curl -X DELETE localhost:8081/llm             # back to config/llm.json
 ```
 
 `PUT /llm` validates the chain and saves it to `data/llm.json`. That override wins over
@@ -268,7 +268,6 @@ Known limits:
 ## Development
 
 ```bash
-uv run pytest            # unit + end-to-end (temp data dir, mocked feeds/LLM/SMTP) + Celery canvas (eager)
 uv run ruff check . && uv run ruff format --check . && uv run mypy pulse
 ```
 
@@ -290,5 +289,4 @@ pulse/
   delivery/        channel factory: web, email
   api.py           FastAPI: JSON API + serves the app
   static/app.html  the frontend app (one file, no build step)
-tests/
 ```

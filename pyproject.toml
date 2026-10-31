@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [dependency-groups]
-dev = ["mypy>=1.11", "pytest>=8.3", "respx>=0.21", "ruff>=0.6"]
+dev = ["mypy>=1.11", "ruff>=0.6"]
 
 [build-system]
 requires = ["hatchling"]
@@ -37,5 +37,3 @@ select = ["E", "F", "I", "B", "UP"]
 [tool.mypy]
 ignore_missing_imports = true
 
-[tool.pytest.ini_options]
-testpaths = ["tests"]
