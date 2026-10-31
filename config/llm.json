@@ -1,0 +1,8 @@
+{
+ "chain": [
+  {"provider": "openrouter", "model": "openai/gpt-6-luna", "params": {"reasoning": {"effort": "low"}}},
+  {"provider": "openai", "model": "gpt-6-luna", "params": {"reasoning_effort": "low"}},
+  {"provider": "gemini", "model": "gemini-3.8-flash"},
+  {"provider": "anthropic", "model": "claude-opus-5-5", "params": {"effort": "low"}}
+ ]
+}

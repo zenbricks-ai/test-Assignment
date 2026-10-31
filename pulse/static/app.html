@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Pulse</title>
+<style>
+  :root {
+    --bg: #f6f5f3; --card: #fff; --text: #1c1917; --muted: #78716c; --line: #e7e5e4;
+    --accent: #1d4ed8; --accent-text: #fff; --ok: #15803d; --warn: #b45309; --bad: #b91c1c;
+    --input: #fff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141312; --card: #1e1d1b; --text: #f5f5f4; --muted: #a8a29e; --line: #34312e;
+      --accent: #60a5fa; --accent-text: #0b1220; --ok: #4ade80; --warn: #fbbf24; --bad: #f87171;
+      --input: #262422;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 14px/1.5 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  header { padding: 14px 20px; border-bottom: 1px solid var(--line); background: var(--card); }
+  h1 { font-size: 18px; margin: 0; }
+  h2 { font-size: 15px; margin: 0; }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px 16px 48px; display: grid; gap: 16px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+  .head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: space-between;
+          margin-bottom: 12px; }
+  .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
+  button, .btn { font: inherit; border-radius: 6px; padding: 6px 12px; cursor: pointer;
+                 border: 1px solid var(--line); background: var(--input); color: var(--text);
+                 text-decoration: none; display: inline-block; white-space: nowrap; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  button:disabled { opacity: .5; cursor: default; }
+  button:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 7px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; font-size: 12px; border-top: none; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px;
+          border: 1px solid currentColor; }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .muted { color: var(--muted); }
+  #msg { min-height: 20px; margin: 0; }
+  .empty { color: var(--muted); padding: 12px 0; }
+</style>
+</head>
+<body>
+<header><h1>AI Pulse</h1></header>
+
+<main>
+  <p id="msg" role="status" aria-live="polite"></p>
+
+  <section class="card" aria-labelledby="runsTitle">
+    <div class="head">
+      <h2 id="runsTitle">Runs</h2>
+      <div class="row">
+        <button class="primary" id="runNow">Run now</button>
+        <button id="forceRun" title="Rerun even if today already ran; re-sends the digest">Force rerun</button>
+        <button id="refreshRuns">Refresh</button>
+      </div>
+    </div>
+    <p class="hint">A run collects news, summarises it, analyses impact, builds the digest and sends it.
+      It also runs automatically every day.</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Run</th><th>Trigger</th><th>Status</th><th>New items</th><th>Summarised</th>
+        <th>Analysed</th><th>Sent</th><th>Tokens</th><th>Failed sources</th></tr></thead>
+      <tbody id="runs"></tbody>
+    </table></div>
+  </section>
+
+  <section class="card" aria-labelledby="digestsTitle">
+    <div class="head">
+      <h2 id="digestsTitle">Digests</h2>
+      <button id="refreshDigests">Refresh</button>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Date</th><th>Project</th><th>Actions</th></tr></thead>
+      <tbody id="digests"></tbody>
+    </table></div>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+function el(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v; else node.setAttribute(k, v);
+  }
+  for (const c of children) node.append(c ?? "");  // strings become text nodes: no HTML injection
+  return node;
+}
+
+function say(text, kind = "") { $("msg").className = kind; $("msg").textContent = text; }
+
+async function api(path, options = {}) {
+  const res = await fetch(path, options);
+  const body = res.headers.get("content-type")?.includes("json") ? await res.json() : null;
+  if (!res.ok) throw new Error(body?.detail || `HTTP ${res.status}`);
+  return body;
+}
+
+const STATUS = { done: "ok", running: "warn", failed: "bad" };
+
+async function loadRuns() {
+  const body = $("runs");
+  try {
+    const runs = await api("/runs");
+    body.replaceChildren(...(runs.length ? runs.map((r) => el("tr", {},
+      el("td", {}, r.key), el("td", {}, r.trigger),
+      el("td", {}, el("span", { class: `pill ${STATUS[r.status] || "muted"}` }, r.status)),
+      el("td", {}, String(r.stats.new_items ?? "–")), el("td", {}, String(r.stats.enriched ?? "–")),
+      el("td", {}, String(r.stats.analysed ?? "–")), el("td", {}, String(r.stats.deliveries ?? "–")),
+      el("td", { title: Object.entries(r.tokens_by_provider).map(([p, n]) => `${p}: ${n}`).join("\n") },
+        r.tokens_used.toLocaleString()),
+      el("td", { class: (r.stats.failed_sources || []).length ? "warn" : "muted" },
+        (r.stats.failed_sources || []).join(", ") || "none"),
+    )) : [el("tr", {}, el("td", { colspan: 9, class: "empty" }, "No runs yet. Press Run now."))]));
+    return runs;
+  } catch (e) {
+    body.replaceChildren(el("tr", {}, el("td", { colspan: 9, class: "empty" }, e.message)));
+    return [];
+  }
+}
+
+async function loadDigests() {
+  const body = $("digests");
+  try {
+    const digests = await api("/api/digests");
+    body.replaceChildren(...(digests.length ? digests.map((d) => {
+      const page = `/digests/${encodeURIComponent(d.slug)}/${d.date}`;
+      const json = `/api/digests/${encodeURIComponent(d.slug)}/${d.date}`;
+      const file = `${d.slug}-${d.date}`;
+      return el("tr", {}, el("td", {}, d.date), el("td", {}, d.name),
+        el("td", {}, el("div", { class: "row" },
+          el("a", { class: "btn", href: page, target: "_blank", rel: "noopener" }, "Open"),
+          el("a", { class: "btn", href: page, download: `${file}.html` }, "Download HTML"),
+          el("a", { class: "btn", href: json, download: `${file}.json` }, "Download JSON"))));
+    }) : [el("tr", {}, el("td", { colspan: 3, class: "empty" }, "No digests yet. Run once to create one."))]));
+  } catch (e) {
+    body.replaceChildren(el("tr", {}, el("td", { colspan: 3, class: "empty" }, e.message)));
+  }
+}
+
+async function guarded(button, work) {
+  button.disabled = true;
+  try { await work(); } catch (e) { say(e.message, "bad"); } finally { button.disabled = false; }
+}
+
+let polling = null;
+function pollRuns() {
+  clearInterval(polling);
+  const until = Date.now() + 15 * 60_000;
+  polling = setInterval(async () => {
+    const runs = await loadRuns();
+    if (!runs.some((r) => r.status === "running") || Date.now() > until) {
+      clearInterval(polling);
+      loadDigests();
+    }
+  }, 3000);
+}
+
+async function startRun(force) {
+  await api(`/runs${force ? "?force=true" : ""}`, { method: "POST" });
+  say(force ? "Rerun started. Progress updates below." : "Run started. If today already ran, nothing new happens; use Force rerun.", "ok");
+  setTimeout(loadRuns, 1500);
+  pollRuns();
+}
+
+$("runNow").onclick = (e) => guarded(e.currentTarget, () => startRun(false));
+$("forceRun").onclick = (e) => guarded(e.currentTarget, async () => {
+  if (confirm("Rerun today and send the digest again?")) await startRun(true);
+});
+$("refreshRuns").onclick = (e) => guarded(e.currentTarget, loadRuns);
+$("refreshDigests").onclick = (e) => guarded(e.currentTarget, loadDigests);
+
+loadRuns();
+loadDigests();
+</script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+.venv/
+__pycache__/
+data/
+.env
+.ruff_cache/
+.mypy_cache/
+celerybeat-schedule*
