@@ -1,0 +1,23 @@
+{
+ "name": "HelpDesk AI (LLM support chatbot)",
+ "description": "Customer-support chatbot for a B2B SaaS product. Answers tickets in web chat and email using RAG over ~20k help-center articles, escalates to humans, and drafts replies for agents. ~150k conversations/month, English plus Spanish and German.",
+ "context": {
+  "llm": "OpenAI GPT models via API for answers; small model for intent routing",
+  "retrieval": "OpenAI embeddings + pgvector; hybrid BM25 rerank",
+  "stack": "Python FastAPI backend, LangChain, Postgres, Redis, React widget",
+  "integrations": ["Zendesk", "Intercom", "Slack (agent handoff)"],
+  "goals": [
+   "Cut cost per conversation by 30%",
+   "Raise auto-resolution rate from 42% to 55%",
+   "Reduce p95 latency below 3s"
+  ],
+  "constraints": [
+   "GDPR: EU customer data must stay in EU",
+   "SOC 2; no training on customer data",
+   "Hallucinated policy answers are a top escalation cause"
+  ]
+ },
+ "subscriptions": [
+  {"channel": "web", "target": "public"}
+ ]
+}

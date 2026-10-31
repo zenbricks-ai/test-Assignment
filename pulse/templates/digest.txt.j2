@@ -1,0 +1,31 @@
+AI Pulse {{ date }} - what matters for {{ d.profile.name }}
+{{ d.stats.relevant }} relevant of {{ d.stats.analysed }} analysed updates.
+{% if d.failed_sources %}Sources unavailable today: {{ d.failed_sources | join(", ") }}
+{% endif %}
+
+ACTION LIST
+{% for a in d.actions %}
+[{{ a.priority }} / effort {{ a.effort }}] {{ a.recommendation }}
+    re: {{ a.title }}
+{% else %}
+Nothing to act on today.
+{% endfor %}
+
+TOP UPDATES
+{% for i in d.top_items %}
+* {{ i.title }} [{{ i.category | category }} | {{ i.relevance }} | {{ i.impact_type }}]
+  {{ i.summary }}
+  Why: {{ i.rationale }}
+  {{ i.url }}
+
+{% endfor %}
+{% if d.also_noted %}
+ALSO NOTED
+{% for i in d.also_noted %}
+- {{ i.title }} {{ i.url }}
+{% endfor %}
+{% endif %}
+{% if base_url %}
+
+View in browser: {{ base_url }}/digests/{{ d.profile.slug }}/{{ date }}
+{% endif %}

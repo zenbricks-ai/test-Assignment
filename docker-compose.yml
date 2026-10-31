@@ -1,0 +1,42 @@
+x-app: &app
+  build: .
+  env_file: .env
+  environment:
+    REDIS_URL: redis://redis:6379/0
+    DATA_DIR: /app/data
+  volumes: [pulse-data:/app/data]   # JSON store, shared by api/worker/beat on this host
+  depends_on:
+    redis: { condition: service_healthy }
+  restart: unless-stopped
+
+services:
+  redis:
+    image: redis:7-alpine
+    healthcheck: { test: ["CMD", "redis-cli", "ping"], interval: 5s, retries: 10 }
+
+  api:
+    <<: *app
+    ports: ["8081:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')"]
+      interval: 15s
+
+  worker:
+    <<: *app
+    command: ["celery", "-A", "pulse.tasks", "worker", "-Q", "celery,collect,llm,deliver",
+              "--concurrency", "4", "--loglevel", "INFO"]
+    stop_grace_period: 60s
+
+  beat:  # exactly one replica, or the daily run fires twice per schedule
+    <<: *app
+    command: ["celery", "-A", "pulse.tasks", "beat", "--loglevel", "INFO",
+              "--schedule", "/tmp/celerybeat-schedule"]
+
+  flower:  # queue dashboard on :5555; starts only with `--profile ops`; no login (internal)
+    <<: *app
+    profiles: [ops]
+    ports: ["5555:5555"]
+    command: ["celery", "-A", "pulse.tasks", "flower", "--port=5555"]
+
+volumes:
+  pulse-data:

@@ -1,0 +1,15 @@
+[
+ {"name": "OpenAI News", "type": "rss", "url": "https://openai.com/news/rss.xml", "weight": 1.5},
+ {"name": "Google DeepMind", "type": "rss", "url": "https://deepmind.google/blog/rss.xml", "weight": 1.4},
+ {"name": "Google AI Blog", "type": "rss", "url": "https://blog.google/technology/ai/rss/", "weight": 1.2},
+ {"name": "Hugging Face Blog", "type": "rss", "url": "https://huggingface.co/blog/feed.xml", "weight": 1.2},
+ {"name": "Simon Willison", "type": "rss", "url": "https://simonwillison.net/atom/everything/", "weight": 1.1},
+ {"name": "arXiv cs.CL", "type": "rss", "url": "http://export.arxiv.org/api/query?search_query=cat:cs.CL&sortBy=submittedDate&sortOrder=descending&max_results=25", "weight": 0.7},
+ {"name": "GitHub: openai-python", "type": "rss", "url": "https://github.com/openai/openai-python/releases.atom", "weight": 1.0},
+ {"name": "GitHub: anthropic-sdk-python", "type": "rss", "url": "https://github.com/anthropics/anthropic-sdk-python/releases.atom", "weight": 1.0},
+ {"name": "GitHub: langchain", "type": "rss", "url": "https://github.com/langchain-ai/langchain/releases.atom", "weight": 0.9},
+ {"name": "GitHub: vllm", "type": "rss", "url": "https://github.com/vllm-project/vllm/releases.atom", "weight": 0.9},
+ {"name": "Hacker News: LLM", "type": "hn", "url": "https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=50&query=LLM&numericFilters=points>40", "weight": 1.0},
+ {"name": "Hacker News: OpenAI", "type": "hn", "url": "https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=50&query=OpenAI&numericFilters=points>40", "weight": 1.0},
+ {"name": "Hacker News: Anthropic", "type": "hn", "url": "https://hn.algolia.com/api/v1/search_by_date?tags=story&hitsPerPage=50&query=Anthropic&numericFilters=points>40", "weight": 1.0}
+]

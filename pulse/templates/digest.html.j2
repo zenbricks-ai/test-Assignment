@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI Pulse · {{ date }}</title>
+</head>
+<body style="margin:0;background:#f5f5f4;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#1c1917;line-height:1.5">
+<div style="max-width:720px;margin:0 auto;padding:24px 16px">
+
+  <p style="margin:0;color:#78716c;font-size:13px">AI Pulse · {{ date }}</p>
+  <h1 style="margin:4px 0 4px;font-size:24px">What matters for {{ d.profile.name }}</h1>
+  <p style="margin:0 0 24px;color:#57534e;font-size:14px">
+    {{ d.stats.relevant }} relevant of {{ d.stats.analysed }} analysed updates.
+    {% if d.failed_sources %}<br><span style="color:#b45309">Sources unavailable today: {{ d.failed_sources | join(", ") }}</span>{% endif %}
+  </p>
+
+  <h2 style="font-size:18px;margin:0 0 12px">Action list</h2>
+  {% if d.actions %}
+  <table role="presentation" style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e7e5e4;border-radius:8px;margin-bottom:28px;font-size:14px">
+    <tr style="text-align:left;color:#78716c;font-size:12px">
+      <th style="padding:8px 12px">Priority</th><th style="padding:8px 12px">Action</th><th style="padding:8px 12px">Effort</th>
+    </tr>
+    {% for a in d.actions %}
+    <tr style="border-top:1px solid #e7e5e4;vertical-align:top">
+      <td style="padding:8px 12px;font-weight:600;color:{{ '#b91c1c' if a.priority == 'P0' else '#b45309' if a.priority == 'P1' else '#57534e' }}">{{ a.priority }}</td>
+      <td style="padding:8px 12px">{{ a.recommendation }}<br><a href="{{ a.url }}" style="color:#78716c;font-size:12px">{{ a.title }}</a></td>
+      <td style="padding:8px 12px">{{ a.effort }}</td>
+    </tr>
+    {% endfor %}
+  </table>
+  {% else %}
+  <p style="color:#57534e;font-size:14px;margin:0 0 28px">Nothing to act on today.</p>
+  {% endif %}
+
+  <h2 style="font-size:18px;margin:0 0 12px">Top updates</h2>
+  {% for i in d.top_items %}
+  <div style="background:#fff;border:1px solid #e7e5e4;border-radius:8px;padding:14px 16px;margin-bottom:12px">
+    <p style="margin:0 0 6px;font-size:12px;color:#78716c">
+      <span style="background:#f5f5f4;border-radius:4px;padding:1px 6px">{{ i.category | category }}</span>
+      &nbsp;{{ i.source }} · {{ i.published_at | day }}
+      &nbsp;·&nbsp;<strong style="color:{{ '#b91c1c' if i.relevance == 'High' else '#b45309' }}">{{ i.relevance }}</strong>
+      · {{ i.impact_type }}
+    </p>
+    <a href="{{ i.url }}" style="font-size:16px;font-weight:600;color:#1c1917;text-decoration:none">{{ i.title }}</a>
+    <p style="margin:6px 0;font-size:14px">{{ i.summary }}</p>
+    <p style="margin:0;font-size:13px;color:#44403c"><strong>Why it matters:</strong> {{ i.rationale }}</p>
+  </div>
+  {% else %}
+  <p style="color:#57534e;font-size:14px">No relevant updates today.</p>
+  {% endfor %}
+
+  {% if d.also_noted %}
+  <h2 style="font-size:16px;margin:28px 0 8px">Also noted</h2>
+  <ul style="padding-left:18px;margin:0;font-size:13px;color:#44403c">
+    {% for i in d.also_noted %}
+    <li><a href="{{ i.url }}" style="color:#44403c">{{ i.title }}</a> <span style="color:#a8a29e">({{ i.category | category }})</span></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if base_url %}
+  <p style="margin:32px 0 0;font-size:12px;color:#a8a29e"><a href="{{ base_url }}/digests/{{ d.profile.slug }}/{{ date }}" style="color:#a8a29e">View in browser</a></p>
+  {% endif %}
+</div>
+</body>
+</html>
